@@ -3,33 +3,35 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SwiftVoice | Elegant Voice Speed Test</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <!-- Explicitly request microphone permission via Permissions Policy -->
+  <meta http-equiv="Permissions-Policy" content="microphone=(self)">
+  <title>SwiftVoice | Voice Speed Trainer</title>
   <meta name="description"
-    content="SwiftType is a minimalist, distraction-free typing test designed to help you improve your typing speed and accuracy with elegance and focus.">
+    content="SwiftVoice is a privacy-first voice typing trainer powered by the browser's built-in Web Speech API. No data ever leaves your device — 100% local processing.">
   <meta name="keywords"
-    content="typing test, typing speed, wpm, wpm test, minimalist typing, swift type, typing practice, clean typing test">
+    content="voice typing, voice speed test, wpm, speech recognition, voice trainer, web speech api, privacy, offline, local, swift voice">
 
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website">
-  <meta property="og:url" content="https://swifttype.pages.dev/">
-  <meta property="og:title" content="SwiftType | Elegant Typing Test">
-  <meta property="og:description" content="A minimalist, distraction-free typing test designed for focus and speed.">
-  <meta property="og:image" content="https://swifttype.pages.dev/og-image.png">
+  <meta property="og:url" content="https://swiftvoice.murdawkmedia.com/">
+  <meta property="og:title" content="SwiftVoice | Voice Speed Trainer">
+  <meta property="og:description" content="Train your voice typing speed. 100% private — all speech processing happens locally in your browser.">
+  <meta property="og:image" content="/logo.png">
 
   <!-- Twitter -->
   <meta property="twitter:card" content="summary_large_image">
-  <meta property="twitter:url" content="https://swifttype.pages.dev/">
-  <meta property="twitter:title" content="SwiftType | Elegant Typing Test">
+  <meta property="twitter:url" content="https://swiftvoice.murdawkmedia.com/">
+  <meta property="twitter:title" content="SwiftVoice | Voice Speed Trainer">
   <meta property="twitter:description"
-    content="A minimalist, distraction-free typing test designed for focus and speed.">
-  <meta property="twitter:image" content="https://swifttype.pages.dev/og-image.png">
+    content="Train your voice typing speed. 100% private — all speech processing happens locally in your browser.">
+  <meta property="twitter:image" content="/logo.png">
 
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
-      "name": "SwiftType",
+      "name": "SwiftVoice",
       "applicationCategory": "EducationalApplication",
       "operatingSystem": "Web",
       "offers": {
@@ -37,8 +39,8 @@
         "price": "0",
         "priceCurrency": "USD"
       },
-      "description": "A minimalist typing test application designed to improve typing speed and accuracy without distractions.",
-      "featureList": "Distraction-free interface, WPM tracking, Accuracy tracking, Dark/Light mode, Multiple durations",
+      "description": "A privacy-first voice typing trainer using the browser's built-in Web Speech API. No audio ever leaves your device.",
+      "featureList": "Voice speed tracking, WPM tracking, Accuracy tracking, Dark/Light mode, Multiple durations, 100% local processing, No account required",
       "author": {
         "@type": "Organization",
         "name": "Murdawk Media",
@@ -54,13 +56,15 @@
   <style>
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background-color: #fbfbfd;
-      color: #1d1d1f;
+      background-color: #161617;
+      color: #f5f5f7;
+      /* Prevent iOS elastic overscroll ruining the layout */
+      overscroll-behavior: none;
     }
 
     .apple-blur {
       backdrop-filter: saturate(180%) blur(20px);
-      background-color: rgba(255, 255, 255, 0.7);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
     }
 
     .cursor-blink {
@@ -68,19 +72,18 @@
     }
 
     @keyframes blink {
-
-      from,
-      to {
-        border-color: transparent
-      }
-
-      50% {
-        border-color: #0071e3
-      }
+      from, to { border-color: transparent; }
+      50% { border-color: #3b82f6; }
     }
 
     ::selection {
       background: rgba(0, 113, 227, 0.2);
+    }
+
+    /* Smooth font rendering on macOS/iOS */
+    * {
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
   </style>
   <script type="importmap">
