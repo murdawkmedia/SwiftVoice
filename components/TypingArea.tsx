@@ -1,10 +1,8 @@
-
 import React from 'react';
 
 interface TypingAreaProps {
   targetText: string;
   userInput: string;
-  onInputChange: (value: string) => void;
   isFinished: boolean;
   isActive: boolean;
   isDark: boolean;
@@ -15,14 +13,12 @@ const TypingArea: React.FC<TypingAreaProps> = ({
   userInput,
   isFinished,
   isActive,
-  isDark
+  isDark,
 }) => {
-  // No references or input handling needed for voice
-
   const renderCharacters = () => {
     return targetText.split('').map((char, index) => {
       let colorClass = isDark ? 'text-gray-600' : 'text-gray-300';
-      let isCurrent = index === userInput.length;
+      const isCurrent = index === userInput.length;
 
       if (index < userInput.length) {
         if (userInput[index] === char) {
@@ -34,9 +30,10 @@ const TypingArea: React.FC<TypingAreaProps> = ({
 
       return (
         <span
-          key={index}
-          className={`relative transition-colors duration-150 rounded-[2px] ${colorClass} ${isCurrent && isActive ? (isDark ? 'border-l-2 border-blue-400' : 'border-l-2 border-blue-500') : ''
-            }`}
+          key={`${char}-${index}`}
+          className={`relative transition-colors duration-150 rounded-[2px] ${colorClass} ${
+            isCurrent && isActive ? `cursor-blink ${isDark ? 'border-l-2 border-blue-400' : 'border-l-2 border-blue-500'}` : ''
+          }`}
         >
           {char}
         </span>
@@ -46,15 +43,21 @@ const TypingArea: React.FC<TypingAreaProps> = ({
 
   return (
     <div
-      className="relative w-full max-w-4xl mx-auto py-12 px-8 min-h-[200px]"
+      className="relative w-full max-w-4xl mx-auto py-12 px-4 sm:px-8 min-h-[200px]"
+      role="region"
+      aria-label="Voice prompt"
+      data-testid="typing-area"
     >
-      <div className="text-2xl md:text-3xl leading-relaxed tracking-tight font-normal text-left select-none">
+      <div className="text-2xl md:text-3xl leading-relaxed font-normal text-left select-none" data-testid="quote-text">
         {renderCharacters()}
       </div>
 
       {!isActive && !isFinished && (
-        <div className={`absolute inset-0 flex items-center justify-center rounded-2xl pointer-events-none transition-all duration-300 ${isDark ? 'bg-black/20 backdrop-blur-[1px]' : 'bg-white/40 backdrop-blur-[2px]'}`}>
-        </div>
+        <div
+          className={`absolute inset-0 flex items-center justify-center rounded-2xl pointer-events-none transition-all duration-300 ${
+            isDark ? 'bg-black/20 backdrop-blur-[1px]' : 'bg-white/40 backdrop-blur-[2px]'
+          }`}
+        />
       )}
     </div>
   );
