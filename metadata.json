@@ -1,6 +1,6 @@
 
 {
-  "name": "SwiftType - Minimalist Typing Experience",
-  "description": "A premium, Apple-inspired typing test designed for focus and speed. Test your words per minute (WPM) and accuracy with elegant real-time feedback and quotes from tech pioneers.",
+  "name": "SwiftVoice - Voice Speed Trainer",
+  "description": "A browser-native voice speed trainer with no SwiftVoice backend, no account, and no API keys. Speech recognition behavior depends on your browser.",
   "requestFramePermissions": []
 }
