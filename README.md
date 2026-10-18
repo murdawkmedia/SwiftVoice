@@ -4,6 +4,15 @@
 
 # SwiftVoice
 
+Live app: [swiftvoice.pages.dev](https://swiftvoice.pages.dev/).
+
+## Source and distribution
+
+The [Murdawk Nostr repository](https://gitworkshop.dev/npub17j3f7cuhcvjqnf7d80x6rt9hmkkhdguwg4l2th0h4qnhqketr63s6xakwv/git.shakespeare.diy/swiftvoice) is authoritative.
+[Hilary GitHub](https://github.com/hilaryduffrules-hash/swiftvoice) is a distribution mirror with Actions disabled. Use GitWorkshop for contributions.
+With ngit installed: `git clone nostr://npub17j3f7cuhcvjqnf7d80x6rt9hmkkhdguwg4l2th0h4qnhqketr63s6xakwv/git.shakespeare.diy/swiftvoice`.
+The existing Cloudflare site is preserved; see [DEPLOY.md](DEPLOY.md).
+
 SwiftVoice is a free, static, browser-native voice speed trainer. It has no SwiftVoice backend, no accounts, no API keys, and no Murdawk Media data collection.
 
 Speech recognition is provided by the user's browser through the Web Speech API. Browser behavior varies: some browsers can use local or platform recognition, while others may use provider-hosted speech services. See the [MDN Web Speech API guide](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API/Using_the_Web_Speech_API) for the browser-level privacy details.
