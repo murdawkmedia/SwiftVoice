@@ -1,0 +1,24 @@
+name: SwiftVoice static release checks
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund --fetch-retries=0 --fetch-timeout=20000
+      - name: Types and offline unit tests
+        run: |
+          npm run typecheck
+          npm test -- --maxWorkers=2
+      - name: Complete static artifact
+        run: npm run build

@@ -9,7 +9,7 @@ Live app: [swiftvoice.pages.dev](https://swiftvoice.pages.dev/).
 ## Source and distribution
 
 The [Murdawk Nostr repository](https://gitworkshop.dev/npub17j3f7cuhcvjqnf7d80x6rt9hmkkhdguwg4l2th0h4qnhqketr63s6xakwv/git.shakespeare.diy/swiftvoice) is authoritative.
-[Hilary GitHub](https://github.com/hilaryduffrules-hash/swiftvoice) is a distribution mirror with Actions disabled. Use GitWorkshop for contributions.
+[MurdawkMedia GitHub](https://github.com/MurdawkMedia/SwiftVoice) is a passive distribution mirror. Use GitWorkshop for contributions.
 With ngit installed: `git clone nostr://npub17j3f7cuhcvjqnf7d80x6rt9hmkkhdguwg4l2th0h4qnhqketr63s6xakwv/git.shakespeare.diy/swiftvoice`.
 The existing Cloudflare site is preserved; see [DEPLOY.md](DEPLOY.md).
 

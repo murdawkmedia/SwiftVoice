@@ -4,9 +4,10 @@ const firstQuote = 'Design is not just what it looks like and feels like. Design
 
 const blockThirdPartyRequests = async (page: Page) => {
   const externalRequests: string[] = [];
+  const testOrigin = new URL(String(test.info().project.use.baseURL)).origin;
   await page.route('**/*', async (route) => {
     const url = route.request().url();
-    if (url.startsWith('http://127.0.0.1:3000/') || url === 'http://127.0.0.1:3000') {
+    if (new URL(url).origin === testOrigin) {
       await route.continue();
       return;
     }
@@ -162,4 +163,22 @@ test.describe('mobile copy', () => {
 
     await expect(page.getByText('Tap Restart to reset')).toBeVisible();
   });
+});
+
+test('restart clears the active speech session without external requests', async ({ page }) => {
+  await installMockSpeechRecognition(page);
+  const externalRequests = await blockThirdPartyRequests(page);
+  await page.goto('/');
+  await page.getByTestId('start-button').click();
+  await expect(page.getByTestId('listening-indicator')).toBeVisible();
+
+  await page.evaluate(() => window.__swiftVoiceEmitResult(['Design is']));
+  await expect(page.getByTestId('progress-text')).toHaveText('Design is ');
+  await page.getByTestId('restart-button').click();
+
+  await expect(page.getByTestId('start-button')).toBeVisible();
+  await expect(page.getByTestId('listening-indicator')).toHaveCount(0);
+  await expect(page.getByTestId('progress-text')).toHaveText('');
+  await expect(page.getByTestId('results-card')).toHaveCount(0);
+  expect(externalRequests).toEqual([]);
 });
