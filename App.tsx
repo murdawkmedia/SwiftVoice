@@ -23,8 +23,6 @@ const initialStats = (): TypingStats => ({
   timeTaken: 0,
 });
 
-const isMobile = (): boolean => /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
 const getUnsupportedMessage = (): string => {
   const userAgent = navigator.userAgent;
   if (/Firefox/i.test(userAgent)) {
@@ -58,11 +56,16 @@ const App: React.FC = () => {
   const statsRef = useRef(sessionStats);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const shouldRestartRef = useRef(false);
-  const mobileRef = useRef<boolean | null>(null);
+  const generationRef = useRef(0);
+  const restartTimeoutRef = useRef<number | null>(null);
+  const transcriptRef = useRef({ previous: '', current: '' });
+  const completedWordsRef = useRef({ attempted: 0, missed: 0 });
+  const advancingRef = useRef(false);
 
   const latestRef = useRef({
     quote,
     status,
+    userInput,
   });
 
   useEffect(() => {
@@ -73,18 +76,22 @@ const App: React.FC = () => {
     configRef.current = config;
   }, [config]);
 
-  useEffect(() => {
-    latestRef.current = {
-      quote,
-      status,
-    };
-  });
+  latestRef.current = { quote, status, userInput };
 
   const stopRecognition = useCallback(() => {
+    advancingRef.current = false;
+    generationRef.current += 1;
+    if (restartTimeoutRef.current !== null) {
+      window.clearTimeout(restartTimeoutRef.current);
+      restartTimeoutRef.current = null;
+    }
     shouldRestartRef.current = false;
-    if (recognitionRef.current) {
+    const recognition = recognitionRef.current;
+    recognitionRef.current = null;
+    if (recognition) {
+      recognition.onstart = recognition.onend = recognition.onresult = recognition.onerror = null;
       try {
-        recognitionRef.current.stop();
+        recognition.stop();
       } catch {
         // Browser recognition objects can throw when already stopped.
       }
@@ -99,6 +106,16 @@ const App: React.FC = () => {
   }, []);
 
   const finishTest = useCallback(() => {
+    if (latestRef.current.status !== TestStatus.RUNNING) return;
+    latestRef.current.status = TestStatus.FINISHED;
+    const partial = latestRef.current.userInput.trimEnd();
+    const elapsedMs = Date.now() - (startTimeRef.current ?? Date.now());
+    setSessionStats((previous) => ({
+      ...previous,
+      charactersTyped: previous.charactersTyped + partial.length,
+      wpm: calculateWpm(previous.charactersTyped, partial.length, elapsedMs),
+      timeTaken: elapsedMs / 1000 / 60,
+    }));
     shouldRestartRef.current = false;
     clearTimer();
     stopRecognition();
@@ -110,18 +127,15 @@ const App: React.FC = () => {
     if (timerRef.current) return;
 
     startTimeRef.current = Date.now();
+    latestRef.current.status = TestStatus.RUNNING;
     setStatus(TestStatus.RUNNING);
     const duration = configRef.current.duration;
     setTimeLeft(duration);
 
     timerRef.current = window.setInterval(() => {
-      setTimeLeft((previous) => {
-        if (previous <= 1) {
-          finishTest();
-          return 0;
-        }
-        return previous - 1;
-      });
+      const remaining = Math.max(0, Math.ceil(duration - (Date.now() - startTimeRef.current!) / 1000));
+      setTimeLeft(remaining);
+      if (remaining === 0) finishTest();
     }, 1000);
   }, [finishTest]);
 
@@ -131,6 +145,9 @@ const App: React.FC = () => {
       stopRecognition();
 
       const duration = newDuration ?? config.duration;
+      latestRef.current.status = TestStatus.IDLE;
+      transcriptRef.current = { previous: '', current: '' };
+      completedWordsRef.current = { attempted: 0, missed: 0 };
       setStatus(TestStatus.IDLE);
       setUserInput('');
       setIsListening(false);
@@ -144,33 +161,49 @@ const App: React.FC = () => {
     [clearTimer, config.duration, stopRecognition],
   );
 
+  const failStart = useCallback((nextMessage: string, state: MicState = 'error') => {
+    clearTimer();
+    stopRecognition();
+    latestRef.current.status = TestStatus.IDLE;
+    setStatus(TestStatus.IDLE);
+    setIsListening(false);
+    setMicState(state);
+    setMessage(nextMessage);
+    startTimeRef.current = null;
+  }, [clearTimer, stopRecognition]);
+
   const handleSpeechInput = useCallback((transcript: string) => {
     const currentQuote = latestRef.current.quote;
-    if (latestRef.current.status === TestStatus.FINISHED) return;
+    if (latestRef.current.status !== TestStatus.RUNNING || !shouldRestartRef.current) return;
 
     const result = matchSpeechToQuote(currentQuote.text, transcript);
+    const attempted = completedWordsRef.current.attempted + result.attemptedWords;
+    const missed = completedWordsRef.current.missed + result.missedWords;
+    const accuracy = attempted === 0 ? 100 : Math.round((attempted - missed) / attempted * 100);
 
     setSessionStats((previous) => ({
       ...previous,
-      accuracy: result.accuracy,
-      wordsAttempted: result.attemptedWords,
-      incorrectWords: result.missedWords,
+      accuracy,
+      wordsAttempted: attempted,
+      incorrectWords: missed,
     }));
 
     setUserInput(result.inputText);
 
     if (!result.completed) return;
+    completedWordsRef.current = { attempted, missed };
 
     setSessionStats((previous) => ({
       ...previous,
       charactersTyped: previous.charactersTyped + result.inputText.length,
-      accuracy: result.accuracy,
-      wordsAttempted: result.attemptedWords,
-      incorrectWords: result.missedWords,
+      accuracy,
+      wordsAttempted: attempted,
+      incorrectWords: missed,
     }));
     setUserInput('');
 
     shouldRestartRef.current = false;
+    advancingRef.current = true;
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
@@ -179,40 +212,35 @@ const App: React.FC = () => {
       }
     }
 
-    setQuote(getRandomQuote(DEFAULT_QUOTES, currentQuote.text));
+    transcriptRef.current = { previous: '', current: '' };
+    const nextQuote = getRandomQuote(DEFAULT_QUOTES, currentQuote.text);
+    latestRef.current.quote = nextQuote;
+    setQuote(nextQuote);
 
-    window.setTimeout(() => {
-      if (latestRef.current.status !== TestStatus.RUNNING || !recognitionRef.current) return;
-      shouldRestartRef.current = true;
-      try {
-        recognitionRef.current.start();
-      } catch {
-        // Some browsers briefly reject start while the previous session settles.
-      }
-    }, 150);
-  }, []);
-
-  const failStart = useCallback((nextMessage: string, state: MicState = 'error') => {
-    clearTimer();
-    stopRecognition();
-    setStatus(TestStatus.IDLE);
-    setIsListening(false);
-    setMicState(state);
-    setMessage(nextMessage);
-    startTimeRef.current = null;
-  }, [clearTimer, stopRecognition]);
+  }, [failStart]);
 
   const startTest = () => {
-    const recognition = createSpeechRecognition();
+    if (latestRef.current.status !== TestStatus.IDLE) return;
+    let recognition: SpeechRecognitionLike | null;
+    try { recognition = createSpeechRecognition(); }
+    catch { failStart('Failed to start speech recognition. Reload the page and try again.'); return; }
     if (!recognition) {
       failStart(getUnsupportedMessage(), 'unavailable');
       return;
     }
 
     setMessage(null);
+    const generation = ++generationRef.current;
+    const isCurrent = () => generation === generationRef.current && recognitionRef.current === recognition;
+    recognitionRef.current = recognition;
+    transcriptRef.current = { previous: '', current: '' };
+    completedWordsRef.current = { attempted: 0, missed: 0 };
+    setSessionStats(initialStats());
+    setUserInput('');
+    latestRef.current.status = TestStatus.STARTING;
     setMicState('requesting');
     setStatus(TestStatus.STARTING);
-    setIsListening(true);
+    setIsListening(false);
     shouldRestartRef.current = true;
 
     recognition.continuous = true;
@@ -220,13 +248,17 @@ const App: React.FC = () => {
     recognition.lang = 'en-US';
 
     recognition.onresult = (event: unknown) => {
-      handleSpeechInput(assembleTranscript(event as Parameters<typeof assembleTranscript>[0]));
+      if (!isCurrent()) return;
+      transcriptRef.current.current = assembleTranscript(event as Parameters<typeof assembleTranscript>[0]);
+      handleSpeechInput([transcriptRef.current.previous, transcriptRef.current.current].filter(Boolean).join(' '));
     };
 
     recognition.onerror = (event) => {
+      if (!isCurrent()) return;
       switch (event.error) {
         case 'not-allowed':
         case 'permission-denied':
+        case 'service-not-allowed':
           failStart(
             'Microphone access was denied. Allow microphone access in your browser settings and try again.',
             'denied',
@@ -236,7 +268,7 @@ const App: React.FC = () => {
           failStart('No microphone was detected. Connect a microphone and try again.', 'error');
           break;
         case 'network':
-          setMessage(
+          failStart(
             'The browser speech service reported a network error. Some browsers use provider-hosted recognition.',
           );
           break;
@@ -244,29 +276,46 @@ const App: React.FC = () => {
         case 'aborted':
           break;
         default:
-          setMessage('Speech recognition stopped unexpectedly. Try restarting the test.');
+          failStart('Speech recognition stopped unexpectedly. Try restarting the test.');
           break;
       }
     };
 
     recognition.onstart = () => {
+      if (!isCurrent()) return;
       setMicState('ready');
+      setIsListening(true);
       startTimer();
     };
 
     recognition.onend = () => {
+      if (!isCurrent()) return;
+      if (advancingRef.current && latestRef.current.status === TestStatus.RUNNING) {
+        advancingRef.current = false;
+        restartTimeoutRef.current = window.setTimeout(() => {
+          restartTimeoutRef.current = null;
+          if (!isCurrent() || latestRef.current.status !== TestStatus.RUNNING) return;
+          shouldRestartRef.current = true;
+          try { recognition.start(); }
+          catch { failStart('Speech recognition could not resume. Restart the test to try again.'); }
+        }, 150);
+        return;
+      }
       if (shouldRestartRef.current && latestRef.current.status === TestStatus.RUNNING) {
+        transcriptRef.current.previous = [transcriptRef.current.previous, transcriptRef.current.current].filter(Boolean).join(' ');
+        transcriptRef.current.current = '';
         try {
           recognition.start();
         } catch {
-          // Already starting or stopped.
+          failStart('Speech recognition could not resume. Restart the test to try again.');
         }
+      } else if (latestRef.current.status === TestStatus.STARTING) {
+        failStart('Speech recognition stopped before it was ready. Try starting again.');
       }
     };
 
     try {
       recognition.start();
-      recognitionRef.current = recognition;
     } catch {
       failStart('Failed to start speech recognition. Reload the page and try again.');
     }
@@ -283,6 +332,7 @@ const App: React.FC = () => {
     if (status !== TestStatus.RUNNING || !startTimeRef.current) return;
 
     const interval = window.setInterval(() => {
+      if (latestRef.current.status !== TestStatus.RUNNING) return;
       const elapsedMs = Date.now() - startTimeRef.current!;
       setSessionStats((previous) => ({
         ...previous,
@@ -294,25 +344,21 @@ const App: React.FC = () => {
     return () => window.clearInterval(interval);
   }, [status, userInput.length]);
 
-  if (mobileRef.current === null) {
-    mobileRef.current = isMobile();
-  }
-
   const isUnsupported = micState === 'unavailable';
   const isBusy = status === TestStatus.STARTING || status === TestStatus.RUNNING;
   const themeClass = isDark ? 'bg-[#161617] text-[#f5f5f7]' : 'bg-[#fbfbfd] text-[#1d1d1f]';
   const navClass = isDark ? 'bg-black/70 border-white/10' : 'bg-white/70 border-gray-200/50';
   const messageClass =
     micState === 'unavailable'
-      ? 'border-amber-500/30 bg-amber-500/10 text-amber-300'
-      : 'border-red-500/30 bg-red-500/10 text-red-300';
+      ? isDark ? 'border-amber-500/30 bg-amber-500/10 text-amber-300' : 'border-amber-600/30 bg-amber-50 text-amber-900'
+      : isDark ? 'border-red-500/30 bg-red-500/10 text-red-300' : 'border-red-600/30 bg-red-50 text-red-800';
 
   return (
     <div className={`min-h-screen flex flex-col transition-colors duration-500 ${themeClass}`}>
       <nav className={`apple-blur sticky top-0 z-50 px-4 py-4 border-b transition-colors duration-500 ${navClass}`}>
         <div className="max-w-5xl mx-auto flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center space-x-2">
-            <img src="/logo.png" alt="SwiftVoice logo" className="w-10 h-10 rounded-xl" />
+            <img src="/swiftvoice/logo.png" alt="SwiftVoice logo" className="w-10 h-10 rounded-xl" />
             <h1 className="text-xl font-medium">SwiftVoice</h1>
           </div>
 
@@ -430,7 +476,7 @@ const App: React.FC = () => {
             )}
           </div>
 
-          <div className={`mt-8 text-center font-light transition-colors duration-300 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+          <div className={`mt-8 text-center font-light transition-colors duration-300 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
             - {quote.author}
           </div>
         </div>
@@ -461,7 +507,7 @@ const App: React.FC = () => {
             </div>
           )}
 
-          {(status === TestStatus.FINISHED || status === TestStatus.RUNNING) && (
+          {(status === TestStatus.FINISHED || status === TestStatus.RUNNING || status === TestStatus.STARTING) && (
             <button
               data-testid="restart-button"
               type="button"
@@ -478,7 +524,7 @@ const App: React.FC = () => {
           )}
 
           <p className="mt-4 text-xs text-gray-500 uppercase">
-            {mobileRef.current ? 'Tap Restart to reset' : 'Press Tab to reset'}
+            Use Restart Test to reset
           </p>
         </div>
 
@@ -511,23 +557,8 @@ const App: React.FC = () => {
         </div>
       </footer>
 
-      <GlobalKeyListener onReset={() => resetTest(undefined, quote.text)} />
     </div>
   );
-};
-
-const GlobalKeyListener: React.FC<{ onReset: () => void }> = ({ onReset }) => {
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Tab') {
-        event.preventDefault();
-        onReset();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onReset]);
-  return null;
 };
 
 export default App;

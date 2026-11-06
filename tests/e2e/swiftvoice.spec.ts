@@ -2,6 +2,29 @@ import { expect, test, type Page } from '@playwright/test';
 
 const firstQuote = 'Design is not just what it looks like and feels like. Design is how it works.';
 
+test('Tab traverses controls and prompt text is readable in both themes', async ({ page }) => {
+  await page.goto('./');
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('button', { name: '15s' })).toBeFocused();
+  const contrast = () => page.getByTestId('quote-text').locator('span').first().evaluate(element => {
+    const foreground = getComputedStyle(element).color;
+    const background = getComputedStyle(document.querySelector('#root > div')!).backgroundColor;
+    const luminance = (color: string) => {
+      const values = color.match(/[\d.]+/g)!.slice(0, 3).map(Number).map(v => {
+        const n = v / 255;
+        return n <= 0.04045 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4;
+      });
+      return values[0] * 0.2126 + values[1] * 0.7152 + values[2] * 0.0722;
+    };
+    const a = luminance(foreground), b = luminance(background);
+    return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+  });
+  expect(await contrast()).toBeGreaterThanOrEqual(4.5);
+  await page.getByRole('button', { name: 'Switch to light mode' }).click();
+  await expect.poll(contrast).toBeGreaterThanOrEqual(4.5);
+  await expect(page.getByAltText('SwiftVoice logo')).toHaveAttribute('src', '/swiftvoice/logo.png');
+});
+
 const blockThirdPartyRequests = async (page: Page) => {
   const externalRequests: string[] = [];
   const testOrigin = new URL(String(test.info().project.use.baseURL)).origin;
@@ -73,7 +96,7 @@ test('loads without third-party runtime requests', async ({ page }) => {
   await installMockSpeechRecognition(page);
   const externalRequests = await blockThirdPartyRequests(page);
 
-  await page.goto('/');
+  await page.goto('./');
 
   await expect(page.getByRole('heading', { name: 'SwiftVoice' })).toBeVisible();
   expect(externalRequests).toEqual([]);
@@ -81,7 +104,7 @@ test('loads without third-party runtime requests', async ({ page }) => {
 
 test('advances spoken text with a mocked speech recognizer', async ({ page }) => {
   await installMockSpeechRecognition(page);
-  await page.goto('/');
+  await page.goto('./');
 
   await page.getByTestId('start-button').click();
   await expect(page.getByTestId('listening-indicator')).toBeVisible();
@@ -105,7 +128,7 @@ test('shows unsupported browser state without touching the microphone', async ({
     Object.defineProperty(window, 'webkitSpeechRecognition', { value: undefined, configurable: true });
   });
 
-  await page.goto('/');
+  await page.goto('./');
 
   await expect(page.getByTestId('unsupported-message')).toBeVisible();
   await expect(page.getByTestId('start-button')).toBeDisabled();
@@ -113,7 +136,7 @@ test('shows unsupported browser state without touching the microphone', async ({
 
 test('handles microphone permission denial inline', async ({ page }) => {
   await installMockSpeechRecognition(page);
-  await page.goto('/');
+  await page.goto('./');
 
   await page.getByTestId('start-button').click();
   await page.evaluate(() => {
@@ -125,10 +148,10 @@ test('handles microphone permission denial inline', async ({ page }) => {
   await expect(page.getByTestId('start-button')).toBeVisible();
 });
 
-test('finishes on timer and resets with Tab', async ({ page }) => {
+test('finishes on timer, preserves Tab navigation and resets with Restart', async ({ page }) => {
   await page.clock.install();
   await installMockSpeechRecognition(page);
-  await page.goto('/');
+  await page.goto('./');
 
   await page.getByRole('button', { name: '15s' }).click();
   await expect(page.getByLabel('15 seconds remaining')).toBeVisible();
@@ -139,13 +162,15 @@ test('finishes on timer and resets with Tab', async ({ page }) => {
   await expect(page.getByTestId('results-card')).toBeVisible();
 
   await page.keyboard.press('Tab');
+  await expect(page.getByTestId('results-card')).toBeVisible();
+  await page.getByTestId('restart-button').click();
   await expect(page.getByTestId('start-button')).toBeVisible();
   await expect(page.getByTestId('results-card')).toHaveCount(0);
 });
 
 test('toggles theme accessibly', async ({ page }) => {
   await installMockSpeechRecognition(page);
-  await page.goto('/');
+  await page.goto('./');
 
   await page.getByRole('button', { name: 'Switch to light mode' }).click();
   await expect(page.getByRole('button', { name: 'Switch to dark mode' })).toBeVisible();
@@ -159,16 +184,16 @@ test.describe('mobile copy', () => {
 
   test('uses tap-oriented reset copy', async ({ page }) => {
     await installMockSpeechRecognition(page);
-    await page.goto('/');
+    await page.goto('./');
 
-    await expect(page.getByText('Tap Restart to reset')).toBeVisible();
+    await expect(page.getByText('Use Restart Test to reset')).toBeVisible();
   });
 });
 
 test('restart clears the active speech session without external requests', async ({ page }) => {
   await installMockSpeechRecognition(page);
   const externalRequests = await blockThirdPartyRequests(page);
-  await page.goto('/');
+  await page.goto('./');
   await page.getByTestId('start-button').click();
   await expect(page.getByTestId('listening-indicator')).toBeVisible();
 

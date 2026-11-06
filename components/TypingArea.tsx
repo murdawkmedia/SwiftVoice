@@ -17,7 +17,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
 }) => {
   const renderCharacters = () => {
     return targetText.split('').map((char, index) => {
-      let colorClass = isDark ? 'text-gray-600' : 'text-gray-300';
+      let colorClass = isDark ? 'text-gray-400' : 'text-gray-600';
       const isCurrent = index === userInput.length;
 
       if (index < userInput.length) {

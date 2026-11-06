@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const testPort = Number(process.env.SWIFTVOICE_TEST_PORT ?? '3000');
-const testBaseURL = 'http://127.0.0.1:' + testPort;
+const testBaseURL = 'http://127.0.0.1:' + testPort + '/swiftvoice/';
 
 export default defineConfig({
   testDir: './tests/e2e',

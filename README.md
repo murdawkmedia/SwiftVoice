@@ -4,14 +4,15 @@
 
 # SwiftVoice
 
-Live app: [swiftvoice.pages.dev](https://swiftvoice.pages.dev/).
+Live app: [murdawkmedia.com/swiftvoice](https://www.murdawkmedia.com/swiftvoice/).
 
 ## Source and distribution
 
 The [Murdawk Nostr repository](https://gitworkshop.dev/npub17j3f7cuhcvjqnf7d80x6rt9hmkkhdguwg4l2th0h4qnhqketr63s6xakwv/git.shakespeare.diy/swiftvoice) is authoritative.
 [MurdawkMedia GitHub](https://github.com/MurdawkMedia/SwiftVoice) is a passive distribution mirror. Use GitWorkshop for contributions.
 With ngit installed: `git clone nostr://npub17j3f7cuhcvjqnf7d80x6rt9hmkkhdguwg4l2th0h4qnhqketr63s6xakwv/git.shakespeare.diy/swiftvoice`.
-The existing Cloudflare site is preserved; see [DEPLOY.md](DEPLOY.md).
+The app is served under `/swiftvoice/` in the existing Murdawk Media website
+deployment. Its source remains independent; see [DEPLOY.md](DEPLOY.md).
 
 SwiftVoice is a free, static, browser-native voice speed trainer. It has no SwiftVoice backend, no accounts, no API keys, and no Murdawk Media data collection.
 
@@ -35,14 +36,14 @@ Speech recognition is provided by the user's browser through the Web Speech API.
 
 ## Run Locally
 
-**Prerequisites:** Node.js 20+
+**Prerequisites:** Node.js 22+
 
 ```bash
-npm install
+npm ci --ignore-scripts
 npm run dev
 ```
 
-Open the local Vite URL printed by the command.
+Open the local Vite URL at `/swiftvoice/`.
 
 ## Quality Checks
 

@@ -24,6 +24,12 @@ button {
   touch-action: manipulation;
 }
 
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid #3b82f6;
+  outline-offset: 4px;
+}
+
 .apple-blur {
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);

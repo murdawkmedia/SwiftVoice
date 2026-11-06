@@ -9,7 +9,7 @@ interface StatsOverlayProps {
 
 const StatsOverlay: React.FC<StatsOverlayProps> = ({ wpm, accuracy, timeLeft, isDark }) => {
   const valueClass = isDark ? 'text-white' : 'text-gray-900';
-  const labelClass = isDark ? 'text-gray-500' : 'text-gray-400';
+  const labelClass = isDark ? 'text-gray-400' : 'text-gray-600';
 
   return (
     <div
